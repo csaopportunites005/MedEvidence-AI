@@ -247,9 +247,9 @@ The current version demonstrates the workflow using a clinical test case and an 
 
 ## 👤 Author
 
-**Serge Agassounon**
-Medical Student | AI, Digital Innovation & Health
-University of Abomey-Calavi (UAC), Faculty of Health Sciences (FSS)
+**Serge Agassounon**<br>
+Medical Student | AI, Digital Innovation & Health<br>
+University of Abomey-Calavi (UAC), Faculty of Health Sciences (FSS)<br>
 Cotonou, Benin
 
 ---
