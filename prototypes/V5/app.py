@@ -14,11 +14,69 @@ st.markdown(
     """
     **Workflow**
 
-    AI response → Claims → Evidence → Verification → Correction → Final synthesis
+    AI response → Claims → Classification → Evidence →
+    Verification → Correction → Final synthesis
     """
 )
 
 st.divider()
+
+
+# --------------------------------------------------
+# CLAIM CLASSIFICATION
+# --------------------------------------------------
+
+def classify_claim(claim):
+    text = claim.lower()
+
+    recommendation_words = [
+        "should",
+        "recommend",
+        "recommended",
+        "must",
+        "consider",
+        "do not",
+        "avoid"
+    ]
+
+    diagnostic_words = [
+        "diagnosis",
+        "diagnose",
+        "suspect",
+        "suspicion",
+        "consistent with",
+        "suggests",
+        "indicates",
+        "confirm",
+        "confirmation",
+        "biopsy",
+        "cancer"
+    ]
+
+    medical_fact_words = [
+        "is",
+        "are",
+        "has",
+        "have",
+        "causes",
+        "associated",
+        "specific",
+        "elevated",
+        "increased",
+        "decreased"
+    ]
+
+    if any(word in text for word in recommendation_words):
+        return "Recommendation"
+
+    if any(word in text for word in diagnostic_words):
+        return "Diagnostic claim"
+
+    if any(word in text for word in medical_fact_words):
+        return "Medical fact"
+
+    return "Clinical statement"
+
 
 # --------------------------------------------------
 # 1. AI-GENERATED RESPONSE
@@ -35,17 +93,17 @@ ai_response = st.text_area(
     )
 )
 
-if st.button("Extract clinical claims"):
+if st.button("Extract and classify clinical claims"):
 
     if not ai_response.strip():
         st.warning("Please enter an AI-generated response.")
 
     else:
-        # Simple rule-based extraction.
-        # This is an experimental first step and does not determine
-        # whether a statement is medically true or false.
 
-        sentences = re.split(r"(?<=[.!?])\s+", ai_response.strip())
+        sentences = re.split(
+            r"(?<=[.!?])\s+",
+            ai_response.strip()
+        )
 
         claims = [
             sentence.strip()
@@ -53,19 +111,44 @@ if st.button("Extract clinical claims"):
             if len(sentence.strip()) > 20
         ]
 
-        st.success(f"{len(claims)} candidate claim(s) identified.")
+        st.success(
+            f"{len(claims)} candidate claim(s) identified."
+        )
 
         st.subheader("Verification queue")
 
         if claims:
-            for index, claim in enumerate(claims, start=1):
-                st.markdown(f"### Claim {index}")
+
+            for index, claim in enumerate(
+                claims,
+                start=1
+            ):
+
+                claim_type = classify_claim(claim)
+
+                st.markdown(
+                    f"### Claim {index}"
+                )
+
                 st.write(claim)
-                st.caption("🔎 Needs independent verification")
+
+                st.write(
+                    f"**Type:** {claim_type}"
+                )
+
+                st.caption(
+                    "🔎 Needs independent verification"
+                )
+
         else:
-            st.info("No candidate claims were identified.")
+
+            st.info(
+                "No candidate claims were identified."
+            )
+
 
 st.divider()
+
 
 # --------------------------------------------------
 # 2. CLINICAL CLAIM
@@ -75,8 +158,12 @@ st.header("2. Clinical claim")
 
 claim = st.text_area(
     "Clinical claim to verify:",
-    placeholder="Example: PSA is prostate-specific but not cancer-specific."
+    placeholder=(
+        "Example: PSA is prostate-specific "
+        "but not cancer-specific."
+    )
 )
+
 
 # --------------------------------------------------
 # 3. EVIDENCE
@@ -86,8 +173,12 @@ st.header("3. Evidence")
 
 evidence = st.text_area(
     "Relevant passage from the medical source:",
-    placeholder="Paste the exact relevant passage from the medical source."
+    placeholder=(
+        "Paste the exact relevant passage "
+        "from the medical source."
+    )
 )
+
 
 # --------------------------------------------------
 # 4. SOURCE
@@ -97,7 +188,10 @@ st.header("4. Source")
 
 source = st.text_input(
     "Source name:",
-    value="EAU Guidelines on Prostate Cancer — Diagnostic Evaluation"
+    value=(
+        "EAU Guidelines on Prostate Cancer "
+        "— Diagnostic Evaluation"
+    )
 )
 
 version = st.text_input(
@@ -107,8 +201,12 @@ version = st.text_input(
 
 identifier = st.text_input(
     "URL / DOI / PMID:",
-    value="https://uroweb.org/guidelines/prostatecancer/chapter/diagnostic-evaluation"
+    value=(
+        "https://uroweb.org/guidelines/"
+        "prostatecancer/chapter/diagnostic-evaluation"
+    )
 )
+
 
 # --------------------------------------------------
 # 5. EVIDENCE ASSESSMENT
@@ -129,8 +227,12 @@ status = st.selectbox(
 assessment = st.text_area(
     "Why does the evidence support, partially support, "
     "or not support the claim?",
-    placeholder="Explain the relationship between the claim and the evidence."
+    placeholder=(
+        "Explain the relationship between "
+        "the claim and the evidence."
+    )
 )
+
 
 # --------------------------------------------------
 # 6. FINAL WORDING
@@ -140,8 +242,11 @@ st.header("6. Evidence-backed final wording")
 
 final_wording = st.text_area(
     "Corrected final wording:",
-    placeholder="Write the final evidence-backed formulation."
+    placeholder=(
+        "Write the final evidence-backed formulation."
+    )
 )
+
 
 # --------------------------------------------------
 # GENERATE RECORD
@@ -150,24 +255,37 @@ final_wording = st.text_area(
 if st.button("Generate evidence record"):
 
     if not claim:
-        st.warning("Please enter a clinical claim.")
+        st.warning(
+            "Please enter a clinical claim."
+        )
 
     elif not evidence:
-        st.warning("Please provide the relevant evidence passage.")
+        st.warning(
+            "Please provide the relevant evidence passage."
+        )
 
     elif not source:
-        st.warning("Please provide the source.")
+        st.warning(
+            "Please provide the source."
+        )
 
     else:
 
-        st.success("Evidence verification record created.")
+        st.success(
+            "Evidence verification record created."
+        )
 
         st.divider()
 
-        st.subheader("Evidence Verification Record")
+        st.subheader(
+            "Evidence Verification Record"
+        )
 
         st.markdown("### Claim")
         st.write(claim)
+
+        st.markdown("### Claim type")
+        st.write(classify_claim(claim))
 
         st.markdown("### Evidence passage")
         st.info(evidence)
@@ -175,42 +293,76 @@ if st.button("Generate evidence record"):
         st.markdown("### Source")
         st.write(source)
 
-        st.write("**Version / Year:**", version)
-        st.write("**Identifier:**", identifier)
+        st.write(
+            "**Version / Year:**",
+            version
+        )
 
-        st.markdown("### Verification status")
+        st.write(
+            "**Identifier:**",
+            identifier
+        )
+
+        st.markdown(
+            "### Verification status"
+        )
 
         if status == "Supported":
+
             st.success("🟢 Supported")
 
         elif status == "Partially supported":
-            st.warning("🟠 Partially supported")
+
+            st.warning(
+                "🟠 Partially supported"
+            )
 
         elif status == "Not supported":
-            st.error("🔴 Not supported")
+
+            st.error(
+                "🔴 Not supported"
+            )
 
         else:
-            st.info("⚪ Source not verified")
 
-        st.markdown("### Evidence assessment")
+            st.info(
+                "⚪ Source not verified"
+            )
+
+        st.markdown(
+            "### Evidence assessment"
+        )
 
         if assessment:
-            st.write(assessment)
-        else:
-            st.warning("No assessment provided.")
 
-        st.markdown("### Evidence-backed final wording")
+            st.write(assessment)
+
+        else:
+
+            st.warning(
+                "No assessment provided."
+            )
+
+        st.markdown(
+            "### Evidence-backed final wording"
+        )
 
         if final_wording:
+
             st.info(final_wording)
+
         else:
-            st.warning("No final wording provided.")
+
+            st.warning(
+                "No final wording provided."
+            )
 
         st.divider()
 
         st.caption(
-            "MedEvidence-AI is an experimental research and educational "
-            "prototype. Claim extraction is rule-based and does not determine "
-            "whether a medical statement is true or false. Human review "
-            "remains necessary."
+            "MedEvidence-AI is an experimental research "
+            "and educational prototype. Claim classification "
+            "is rule-based and does not determine whether "
+            "a medical statement is true or false. Human "
+            "review remains necessary."
         )
