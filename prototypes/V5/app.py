@@ -11,7 +11,7 @@ st.subheader("Evidence-backed Clinical Synthesis")
 
 st.markdown(
     """
-    **Workflow :**
+    **Workflow**
 
     AI response → Claims → Evidence → Verification → Correction → Final synthesis
     """
@@ -19,19 +19,31 @@ st.markdown(
 
 st.divider()
 
+# --------------------------------------------------
+# 1. CLINICAL CLAIM
+# --------------------------------------------------
+
 st.header("1. Clinical claim")
 
 claim = st.text_area(
-    "Enter the clinical claim to verify:",
+    "Clinical claim to verify:",
     placeholder="Example: PSA is prostate-specific but not cancer-specific."
 )
+
+# --------------------------------------------------
+# 2. EVIDENCE
+# --------------------------------------------------
 
 st.header("2. Evidence")
 
 evidence = st.text_area(
-    "Paste the relevant passage from the medical source:",
-    placeholder="Paste the exact relevant passage here."
+    "Relevant passage from the medical source:",
+    placeholder="Paste the exact relevant passage from the guideline, review or study."
 )
+
+# --------------------------------------------------
+# 3. SOURCE
+# --------------------------------------------------
 
 st.header("3. Source")
 
@@ -50,7 +62,11 @@ identifier = st.text_input(
     value="https://uroweb.org/guidelines/prostatecancer/chapter/diagnostic-evaluation"
 )
 
-st.header("4. Verification")
+# --------------------------------------------------
+# 4. EVIDENCE ASSESSMENT
+# --------------------------------------------------
+
+st.header("4. Evidence assessment")
 
 status = st.selectbox(
     "Verification status:",
@@ -62,38 +78,94 @@ status = st.selectbox(
     ]
 )
 
-final_wording = st.text_area(
-    "Final evidence-backed wording:",
-    placeholder="Write the corrected and evidence-backed formulation."
+assessment = st.text_area(
+    "Why does the evidence support, partially support, "
+    "or not support the claim?",
+    placeholder=(
+        "Explain the relationship between the claim and the evidence passage."
+    )
 )
+
+# --------------------------------------------------
+# 5. FINAL WORDING
+# --------------------------------------------------
+
+st.header("5. Evidence-backed final wording")
+
+final_wording = st.text_area(
+    "Corrected final wording:",
+    placeholder=(
+        "Write the final wording that should appear in the evidence-backed response."
+    )
+)
+
+# --------------------------------------------------
+# GENERATE RECORD
+# --------------------------------------------------
 
 if st.button("Generate evidence record"):
 
-    if not claim or not evidence or not source:
-        st.warning("Please complete the claim, evidence and source fields.")
+    if not claim:
+        st.warning("Please enter a clinical claim.")
+
+    elif not evidence:
+        st.warning("Please provide the relevant evidence passage.")
+
+    elif not source:
+        st.warning("Please provide the source.")
 
     else:
-        st.success("Evidence record created.")
+
+        st.success("Evidence verification record created.")
 
         st.divider()
 
         st.subheader("Evidence Verification Record")
 
-        st.write("**Claim:**", claim)
-        st.write("**Evidence:**", evidence)
-        st.write("**Source:**", source)
+        st.markdown("### Claim")
+        st.write(claim)
+
+        st.markdown("### Evidence passage")
+        st.info(evidence)
+
+        st.markdown("### Source")
+        st.write(source)
+
         st.write("**Version / Year:**", version)
         st.write("**Identifier:**", identifier)
-        st.write("**Verification status:**", status)
 
-        st.subheader("Evidence-backed final wording")
+        st.markdown("### Verification status")
+
+        if status == "Supported":
+            st.success("🟢 Supported")
+
+        elif status == "Partially supported":
+            st.warning("🟠 Partially supported")
+
+        elif status == "Not supported":
+            st.error("🔴 Not supported")
+
+        else:
+            st.info("⚪ Source not verified")
+
+        st.markdown("### Evidence assessment")
+
+        if assessment:
+            st.write(assessment)
+        else:
+            st.warning("No assessment provided.")
+
+        st.markdown("### Evidence-backed final wording")
 
         if final_wording:
             st.info(final_wording)
         else:
             st.warning("No final wording provided.")
 
+        st.divider()
+
         st.caption(
-            "MedEvidence-AI is an experimental research and educational prototype. "
-            "Human review remains necessary."
+            "MedEvidence-AI is an experimental research and educational "
+            "prototype. Evidence assessment requires human review and does "
+            "not constitute autonomous clinical validation."
         )
