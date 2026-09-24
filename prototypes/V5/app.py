@@ -29,9 +29,6 @@ st.divider()
 def classify_claim(claim):
     text = claim.lower().strip()
 
-    # Diagnostic claims:
-    # Terms specifically associated with diagnosis,
-    # confirmation, biopsy or clinical suspicion.
     diagnostic_patterns = [
         r"\bsuspect\b",
         r"\bsuspicion\b",
@@ -48,8 +45,6 @@ def classify_claim(claim):
         r"\bindicates?\b",
     ]
 
-    # Recommendations:
-    # Terms indicating an action or recommendation.
     recommendation_patterns = [
         r"\bshould\b",
         r"\brecommend(?:ed|ation)?\b",
@@ -72,8 +67,6 @@ def classify_claim(claim):
     ):
         return "Diagnostic claim"
 
-    # Statements describing medical facts,
-    # characteristics, associations or measurements.
     medical_fact_patterns = [
         r"\bis\b",
         r"\bare\b",
@@ -101,7 +94,7 @@ def classify_claim(claim):
 
 # --------------------------------------------------
 # 1. AI-GENERATED RESPONSE
-# --------------------------------------------------
+--------------------------------------------------
 
 st.header("1. AI-generated clinical response")
 
@@ -140,18 +133,18 @@ if st.button("Extract and classify clinical claims"):
 
         if claims:
 
-            for index, claim in enumerate(
+            for index, claim_item in enumerate(
                 claims,
                 start=1
             ):
 
-                claim_type = classify_claim(claim)
+                claim_type = classify_claim(claim_item)
 
                 st.markdown(
                     f"### Claim {index}"
                 )
 
-                st.write(claim)
+                st.write(claim_item)
 
                 st.write(
                     f"**Type:** {claim_type}"
@@ -172,10 +165,10 @@ st.divider()
 
 
 # --------------------------------------------------
-# 2. CLINICAL CLAIM
+# 2. CLAIM VERIFICATION RECORD
 # --------------------------------------------------
 
-st.header("2. Clinical claim")
+st.header("2. Claim verification record")
 
 claim = st.text_area(
     "Clinical claim to verify:",
@@ -184,6 +177,11 @@ claim = st.text_area(
         "but not cancer-specific."
     )
 )
+
+if claim:
+    st.write(
+        f"**Detected claim type:** {classify_claim(claim)}"
+    )
 
 
 # --------------------------------------------------
@@ -195,8 +193,8 @@ st.header("3. Evidence")
 evidence = st.text_area(
     "Relevant passage from the medical source:",
     placeholder=(
-        "Paste the exact relevant passage "
-        "from the medical source."
+        "Paste the exact relevant passage from the "
+        "guideline, review or study."
     )
 )
 
@@ -230,13 +228,28 @@ identifier = st.text_input(
 
 
 # --------------------------------------------------
-# 5. EVIDENCE ASSESSMENT
+# 5. SOURCE VERIFICATION
 # --------------------------------------------------
 
-st.header("5. Evidence assessment")
+st.header("5. Source verification")
+
+source_status = st.selectbox(
+    "Can the source be independently verified?",
+    [
+        "Verified",
+        "Not verified"
+    ]
+)
+
+
+# --------------------------------------------------
+# 6. EVIDENCE ASSESSMENT
+# --------------------------------------------------
+
+st.header("6. Evidence assessment")
 
 status = st.selectbox(
-    "Verification status:",
+    "Claim verification status:",
     [
         "Supported",
         "Partially supported",
@@ -249,17 +262,17 @@ assessment = st.text_area(
     "Why does the evidence support, partially support, "
     "or not support the claim?",
     placeholder=(
-        "Explain the relationship between "
-        "the claim and the evidence."
+        "Explain the relationship between the claim "
+        "and the evidence passage."
     )
 )
 
 
 # --------------------------------------------------
-# 6. FINAL WORDING
+# 7. FINAL WORDING
 # --------------------------------------------------
 
-st.header("6. Evidence-backed final wording")
+st.header("7. Evidence-backed final wording")
 
 final_wording = st.text_area(
     "Corrected final wording:",
@@ -324,8 +337,19 @@ if st.button("Generate evidence record"):
             identifier
         )
 
+        st.markdown("### Source verification")
+
+        if source_status == "Verified":
+            st.success(
+                "🟢 Source independently verified"
+            )
+        else:
+            st.warning(
+                "⚪ Source not independently verified"
+            )
+
         st.markdown(
-            "### Verification status"
+            "### Claim verification status"
         )
 
         if status == "Supported":
@@ -372,8 +396,9 @@ if st.button("Generate evidence record"):
 
         st.caption(
             "MedEvidence-AI is an experimental research "
-            "and educational prototype. Claim classification "
-            "is rule-based and does not determine whether "
-            "a medical statement is true or false. Human "
-            "review remains necessary."
+            "and educational prototype. Claim extraction "
+            "and classification are rule-based. Evidence "
+            "assessment requires independent human review "
+            "and does not constitute autonomous clinical "
+            "validation."
         )
