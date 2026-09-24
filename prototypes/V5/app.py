@@ -1,13 +1,16 @@
 import re
+from urllib.parse import urlparse
+
 import streamlit as st
 
+
 st.set_page_config(
-    page_title="MedEvidence-AI V5",
+    page_title="MedEvidence-AI V5.5",
     page_icon="🧬",
     layout="wide"
 )
 
-st.title("🧬 MedEvidence-AI V5")
+st.title("🧬 MedEvidence-AI V5.5")
 st.subheader("Evidence-backed Clinical Synthesis")
 
 st.markdown(
@@ -15,10 +18,14 @@ st.markdown(
     **Workflow**
 
     AI response → Claims → Classification → Evidence →
-    Verification → Correction → Final synthesis
+    Source identification → Verification → Correction → Final synthesis
     """
 )
 
+
+# --------------------------------------------------
+# CLAIM CLASSIFICATION
+# --------------------------------------------------
 
 def classify_claim(claim):
     text = claim.lower().strip()
@@ -77,6 +84,75 @@ def extract_claims(text):
     ]
 
 
+# --------------------------------------------------
+# SOURCE IDENTIFIER CHECK
+# --------------------------------------------------
+
+def inspect_identifier(identifier):
+    value = identifier.strip()
+
+    if not value:
+        return (
+            "⚪ Identifiant insuffisant",
+            "Aucun URL, DOI ou PMID fourni."
+        )
+
+    # URL
+    if value.startswith(("http://", "https://")):
+
+        try:
+            parsed = urlparse(value)
+
+            if parsed.scheme and parsed.netloc:
+                return (
+                    "🟡 URL fournie",
+                    "Format URL reconnu. "
+                    "L'accès à la source n'est pas vérifié automatiquement."
+                )
+
+        except Exception:
+            pass
+
+        return (
+            "⚪ URL non reconnue",
+            "Le format de l'URL semble incorrect."
+        )
+
+    # DOI
+    if re.match(
+        r"^(https?://doi\.org/)?10\.\d{4,9}/\S+$",
+        value,
+        re.IGNORECASE
+    ):
+        return (
+            "🟡 DOI identifié",
+            "Format DOI reconnu. "
+            "L'accès à la publication n'est pas vérifié automatiquement."
+        )
+
+    # PMID
+    if re.match(
+        r"^(PMID\s*)?\d+$",
+        value,
+        re.IGNORECASE
+    ):
+        return (
+            "🟡 PMID identifié",
+            "Format PMID reconnu. "
+            "L'existence de la notice n'est pas vérifiée automatiquement."
+        )
+
+    return (
+        "⚪ Identifiant non reconnu",
+        "Le format fourni ne correspond pas clairement "
+        "à une URL, un DOI ou un PMID."
+    )
+
+
+# --------------------------------------------------
+# 1. AI RESPONSE
+# --------------------------------------------------
+
 st.header("1. AI-generated clinical response")
 
 ai_response = st.text_area(
@@ -126,6 +202,10 @@ if st.button("Extract and classify clinical claims"):
 st.divider()
 
 
+# --------------------------------------------------
+# 2. CLAIM
+# --------------------------------------------------
+
 st.header("2. Claim verification record")
 
 claim = st.text_area(
@@ -144,6 +224,10 @@ if claim.strip():
     )
 
 
+# --------------------------------------------------
+# 3. EVIDENCE
+# --------------------------------------------------
+
 st.header("3. Evidence")
 
 evidence = st.text_area(
@@ -153,6 +237,10 @@ evidence = st.text_area(
     )
 )
 
+
+# --------------------------------------------------
+# 4. SOURCE
+# --------------------------------------------------
 
 st.header("4. Source")
 
@@ -178,16 +266,23 @@ identifier = st.text_input(
 )
 
 
-st.header("5. Source verification")
+# --------------------------------------------------
+# 5. SOURCE IDENTIFIER CHECK
+# --------------------------------------------------
 
-source_status = st.selectbox(
-    "Can the source be independently verified?",
-    [
-        "Verified",
-        "Not verified"
-    ]
+st.header("5. Source identification check")
+
+identifier_status, identifier_message = inspect_identifier(
+    identifier
 )
 
+st.write(identifier_status)
+st.caption(identifier_message)
+
+
+# --------------------------------------------------
+# 6. EVIDENCE ASSESSMENT
+# --------------------------------------------------
 
 st.header("6. Evidence assessment")
 
@@ -211,6 +306,10 @@ assessment = st.text_area(
 )
 
 
+# --------------------------------------------------
+# 7. FINAL WORDING
+# --------------------------------------------------
+
 st.header("7. Evidence-backed final wording")
 
 final_wording = st.text_area(
@@ -220,6 +319,10 @@ final_wording = st.text_area(
     )
 )
 
+
+# --------------------------------------------------
+# GENERATE RECORD
+# --------------------------------------------------
 
 if st.button("Generate evidence record"):
 
@@ -274,20 +377,11 @@ if st.button("Generate evidence record"):
         )
 
         st.markdown(
-            "### Source verification"
+            "### Source identification"
         )
 
-        if source_status == "Verified":
-
-            st.success(
-                "🟢 Source independently verified"
-            )
-
-        else:
-
-            st.warning(
-                "⚪ Source not independently verified"
-            )
+        st.write(identifier_status)
+        st.caption(identifier_message)
 
         st.markdown(
             "### Claim verification status"
@@ -347,7 +441,8 @@ if st.button("Generate evidence record"):
 
         st.caption(
             "MedEvidence-AI is an experimental research "
-            "and educational prototype. Evidence assessment "
-            "requires independent human review and does not "
-            "constitute autonomous clinical validation."
+            "and educational prototype. Identifier inspection "
+            "checks format only; it does not prove that a "
+            "source exists or that its content supports a claim. "
+            "Human verification remains necessary."
         )
