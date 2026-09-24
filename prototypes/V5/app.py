@@ -2,17 +2,18 @@ import re
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
+from html.parser import HTMLParser
 
 import streamlit as st
 
 
 st.set_page_config(
-    page_title="MedEvidence-AI V5.6",
+    page_title="MedEvidence-AI V5.7",
     page_icon="🧬",
     layout="wide"
 )
 
-st.title("🧬 MedEvidence-AI V5.6")
+st.title("🧬 MedEvidence-AI V5.7")
 st.subheader("Evidence-backed Clinical Synthesis")
 
 st.markdown(
@@ -20,8 +21,8 @@ st.markdown(
     **Workflow**
 
     AI response → Claims → Classification → Evidence →
-    Source identification → Accessibility → Verification →
-    Correction → Final synthesis
+    Source identification → Accessibility → Content retrieval →
+    Verification → Correction → Final synthesis
     """
 )
 
@@ -59,12 +60,16 @@ def classify_claim(claim):
         r"\bindicates?\b"
     ]
 
-    if any(re.search(pattern, text)
-           for pattern in recommendation_patterns):
+    if any(
+        re.search(pattern, text)
+        for pattern in recommendation_patterns
+    ):
         return "Recommendation"
 
-    if any(re.search(pattern, text)
-           for pattern in diagnostic_patterns):
+    if any(
+        re.search(pattern, text)
+        for pattern in diagnostic_patterns
+    ):
         return "Diagnostic claim"
 
     return "Medical fact"
@@ -143,7 +148,7 @@ def inspect_identifier(identifier):
 
 
 # --------------------------------------------------
-# URL ACCESSIBILITY CHECK
+# URL ACCESSIBILITY
 # --------------------------------------------------
 
 def check_url_accessibility(identifier):
@@ -162,8 +167,8 @@ def check_url_accessibility(identifier):
             value,
             headers={
                 "User-Agent": (
-                    "MedEvidence-AI/5.6 "
-                    "(research prototype)"
+                    "Mozilla/5.0 "
+                    "(compatible; MedEvidence-AI/5.7)"
                 )
             }
         )
@@ -195,8 +200,7 @@ def check_url_accessibility(identifier):
 
             return (
                 "🟠 Accès limité",
-                f"La source répond avec HTTP {error.code}. "
-                "L'accès peut nécessiter une autorisation."
+                f"La source répond avec HTTP {error.code}."
             )
 
         return (
@@ -204,7 +208,7 @@ def check_url_accessibility(identifier):
             f"La source a répondu avec HTTP {error.code}."
         )
 
-    except URLError as error:
+    except (URLError, TimeoutError):
 
         return (
             "🔴 Source inaccessible",
@@ -216,6 +220,189 @@ def check_url_accessibility(identifier):
         return (
             "🟠 Vérification impossible",
             "Une erreur est survenue pendant la tentative d'accès."
+        )
+
+
+# --------------------------------------------------
+# HTML TO TEXT
+# --------------------------------------------------
+
+class TextExtractor(HTMLParser):
+
+    def __init__(self):
+        super().__init__()
+        self.parts = []
+        self.skip_content = False
+
+    def handle_starttag(self, tag, attrs):
+
+        if tag.lower() in {
+            "script",
+            "style",
+            "noscript",
+            "svg"
+        }:
+            self.skip_content = True
+
+        if tag.lower() in {
+            "p",
+            "div",
+            "section",
+            "article",
+            "li",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "br"
+        }:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+
+        if tag.lower() in {
+            "script",
+            "style",
+            "noscript",
+            "svg"
+        }:
+            self.skip_content = False
+
+        if tag.lower() in {
+            "p",
+            "div",
+            "section",
+            "article",
+            "li",
+            "h1",
+            "h2",
+            "h3",
+            "h4"
+        }:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+
+        if not self.skip_content:
+            self.parts.append(data)
+
+
+def html_to_text(html):
+
+    parser = TextExtractor()
+    parser.feed(html)
+
+    text = "".join(parser.parts)
+
+    text = re.sub(
+        r"[ \t]+",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\n\s*\n+",
+        "\n\n",
+        text
+    )
+
+    return text.strip()
+
+
+# --------------------------------------------------
+# RETRIEVE SOURCE CONTENT
+# --------------------------------------------------
+
+def retrieve_source_content(identifier):
+
+    value = identifier.strip()
+
+    if not value.startswith(("http://", "https://")):
+
+        return (
+            False,
+            "",
+            "La récupération nécessite une URL."
+        )
+
+    try:
+
+        request = Request(
+            value,
+            headers={
+                "User-Agent": (
+                    "Mozilla/5.0 "
+                    "(compatible; MedEvidence-AI/5.7)"
+                ),
+                "Accept": "text/html,application/xhtml+xml"
+            }
+        )
+
+        with urlopen(
+            request,
+            timeout=15
+        ) as response:
+
+            content_type = response.headers.get(
+                "Content-Type",
+                ""
+            )
+
+            raw_content = response.read()
+
+            if "text/html" not in content_type.lower():
+
+                return (
+                    False,
+                    "",
+                    "La ressource n'est pas identifiée "
+                    "comme une page HTML."
+                )
+
+            html = raw_content.decode(
+                "utf-8",
+                errors="replace"
+            )
+
+            text = html_to_text(html)
+
+            if not text:
+
+                return (
+                    False,
+                    "",
+                    "La page a été récupérée mais aucun "
+                    "contenu textuel exploitable n'a été extrait."
+                )
+
+            return (
+                True,
+                text,
+                "Contenu HTML récupéré avec succès."
+            )
+
+    except HTTPError as error:
+
+        return (
+            False,
+            "",
+            f"Échec HTTP {error.code} lors de la récupération."
+        )
+
+    except (URLError, TimeoutError):
+
+        return (
+            False,
+            "",
+            "Impossible de récupérer le contenu de la source."
+        )
+
+    except Exception as error:
+
+        return (
+            False,
+            "",
+            f"Erreur lors de la récupération : {error}"
         )
 
 
@@ -371,6 +558,46 @@ else:
 
     st.info(
         "Enter a valid URL to test technical accessibility."
+    )
+
+
+# --------------------------------------------------
+# 5C. CONTENT RETRIEVAL
+# --------------------------------------------------
+
+st.header("5C. Source content")
+
+if identifier.startswith(("http://", "https://")):
+
+    if st.button("Retrieve source content"):
+
+        success, content, message = (
+            retrieve_source_content(identifier)
+        )
+
+        if success:
+
+            st.success(message)
+
+            st.text_area(
+                "Retrieved source content:",
+                value=content,
+                height=400
+            )
+
+            st.caption(
+                "⚠️ Retrieved content is not automatically "
+                "considered evidence supporting the claim."
+            )
+
+        else:
+
+            st.error(message)
+
+else:
+
+    st.info(
+        "Enter a valid URL to retrieve source content."
     )
 
 
@@ -535,8 +762,8 @@ if st.button("Generate evidence record"):
 
         st.caption(
             "MedEvidence-AI is an experimental research "
-            "and educational prototype. URL accessibility "
-            "does not establish source validity or prove "
-            "that the source supports a clinical claim. "
-            "Human verification remains necessary."
+            "and educational prototype. Source retrieval "
+            "does not establish that the retrieved content "
+            "supports a clinical claim. Human verification "
+            "remains necessary."
         )
