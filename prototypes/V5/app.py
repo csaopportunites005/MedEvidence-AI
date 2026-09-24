@@ -1,16 +1,18 @@
 import re
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import streamlit as st
 
 
 st.set_page_config(
-    page_title="MedEvidence-AI V5.5",
+    page_title="MedEvidence-AI V5.6",
     page_icon="🧬",
     layout="wide"
 )
 
-st.title("🧬 MedEvidence-AI V5.5")
+st.title("🧬 MedEvidence-AI V5.6")
 st.subheader("Evidence-backed Clinical Synthesis")
 
 st.markdown(
@@ -18,7 +20,8 @@ st.markdown(
     **Workflow**
 
     AI response → Claims → Classification → Evidence →
-    Source identification → Verification → Correction → Final synthesis
+    Source identification → Accessibility → Verification →
+    Correction → Final synthesis
     """
 )
 
@@ -56,16 +59,12 @@ def classify_claim(claim):
         r"\bindicates?\b"
     ]
 
-    if any(
-        re.search(pattern, text)
-        for pattern in recommendation_patterns
-    ):
+    if any(re.search(pattern, text)
+           for pattern in recommendation_patterns):
         return "Recommendation"
 
-    if any(
-        re.search(pattern, text)
-        for pattern in diagnostic_patterns
-    ):
+    if any(re.search(pattern, text)
+           for pattern in diagnostic_patterns):
         return "Diagnostic claim"
 
     return "Medical fact"
@@ -97,7 +96,6 @@ def inspect_identifier(identifier):
             "Aucun URL, DOI ou PMID fourni."
         )
 
-    # URL
     if value.startswith(("http://", "https://")):
 
         try:
@@ -106,8 +104,7 @@ def inspect_identifier(identifier):
             if parsed.scheme and parsed.netloc:
                 return (
                     "🟡 URL fournie",
-                    "Format URL reconnu. "
-                    "L'accès à la source n'est pas vérifié automatiquement."
+                    "Format URL reconnu."
                 )
 
         except Exception:
@@ -118,7 +115,6 @@ def inspect_identifier(identifier):
             "Le format de l'URL semble incorrect."
         )
 
-    # DOI
     if re.match(
         r"^(https?://doi\.org/)?10\.\d{4,9}/\S+$",
         value,
@@ -126,11 +122,9 @@ def inspect_identifier(identifier):
     ):
         return (
             "🟡 DOI identifié",
-            "Format DOI reconnu. "
-            "L'accès à la publication n'est pas vérifié automatiquement."
+            "Format DOI reconnu."
         )
 
-    # PMID
     if re.match(
         r"^(PMID\s*)?\d+$",
         value,
@@ -138,8 +132,7 @@ def inspect_identifier(identifier):
     ):
         return (
             "🟡 PMID identifié",
-            "Format PMID reconnu. "
-            "L'existence de la notice n'est pas vérifiée automatiquement."
+            "Format PMID reconnu."
         )
 
     return (
@@ -147,6 +140,83 @@ def inspect_identifier(identifier):
         "Le format fourni ne correspond pas clairement "
         "à une URL, un DOI ou un PMID."
     )
+
+
+# --------------------------------------------------
+# URL ACCESSIBILITY CHECK
+# --------------------------------------------------
+
+def check_url_accessibility(identifier):
+
+    value = identifier.strip()
+
+    if not value.startswith(("http://", "https://")):
+        return (
+            "⚪ Non applicable",
+            "Le contrôle d'accessibilité nécessite une URL."
+        )
+
+    try:
+
+        request = Request(
+            value,
+            headers={
+                "User-Agent": (
+                    "MedEvidence-AI/5.6 "
+                    "(research prototype)"
+                )
+            }
+        )
+
+        with urlopen(
+            request,
+            timeout=10
+        ) as response:
+
+            status_code = response.getcode()
+
+            if 200 <= status_code < 300:
+
+                return (
+                    "🟢 Source accessible",
+                    f"L'URL a répondu avec le code HTTP {status_code}. "
+                    "Cela confirme l'accessibilité technique de l'URL, "
+                    "pas la validité du contenu comme preuve."
+                )
+
+            return (
+                "🟠 Réponse HTTP",
+                f"L'URL a répondu avec le code HTTP {status_code}."
+            )
+
+    except HTTPError as error:
+
+        if error.code in [401, 403]:
+
+            return (
+                "🟠 Accès limité",
+                f"La source répond avec HTTP {error.code}. "
+                "L'accès peut nécessiter une autorisation."
+            )
+
+        return (
+            "🔴 Source inaccessible",
+            f"La source a répondu avec HTTP {error.code}."
+        )
+
+    except URLError as error:
+
+        return (
+            "🔴 Source inaccessible",
+            "Impossible d'accéder à l'URL depuis l'application."
+        )
+
+    except Exception:
+
+        return (
+            "🟠 Vérification impossible",
+            "Une erreur est survenue pendant la tentative d'accès."
+        )
 
 
 # --------------------------------------------------
@@ -267,7 +337,7 @@ identifier = st.text_input(
 
 
 # --------------------------------------------------
-# 5. SOURCE IDENTIFIER CHECK
+# 5. SOURCE IDENTIFICATION
 # --------------------------------------------------
 
 st.header("5. Source identification check")
@@ -278,6 +348,30 @@ identifier_status, identifier_message = inspect_identifier(
 
 st.write(identifier_status)
 st.caption(identifier_message)
+
+
+# --------------------------------------------------
+# 5B. ACCESSIBILITY
+# --------------------------------------------------
+
+st.header("5B. Source accessibility")
+
+if identifier.startswith(("http://", "https://")):
+
+    if st.button("Check source accessibility"):
+
+        accessibility_status, accessibility_message = (
+            check_url_accessibility(identifier)
+        )
+
+        st.write(accessibility_status)
+        st.caption(accessibility_message)
+
+else:
+
+    st.info(
+        "Enter a valid URL to test technical accessibility."
+    )
 
 
 # --------------------------------------------------
@@ -441,8 +535,8 @@ if st.button("Generate evidence record"):
 
         st.caption(
             "MedEvidence-AI is an experimental research "
-            "and educational prototype. Identifier inspection "
-            "checks format only; it does not prove that a "
-            "source exists or that its content supports a claim. "
+            "and educational prototype. URL accessibility "
+            "does not establish source validity or prove "
+            "that the source supports a clinical claim. "
             "Human verification remains necessary."
         )
