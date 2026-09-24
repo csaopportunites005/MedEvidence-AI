@@ -27,52 +27,73 @@ st.divider()
 # --------------------------------------------------
 
 def classify_claim(claim):
-    text = claim.lower()
+    text = claim.lower().strip()
 
-    recommendation_words = [
-        "should",
-        "recommend",
-        "recommended",
-        "must",
-        "consider",
-        "do not",
-        "avoid"
+    # Diagnostic claims:
+    # Terms specifically associated with diagnosis,
+    # confirmation, biopsy or clinical suspicion.
+    diagnostic_patterns = [
+        r"\bsuspect\b",
+        r"\bsuspicion\b",
+        r"\bdiagnos(?:is|e|ed|tic)\b",
+        r"\bbiopsy\b",
+        r"\bhistopatholog(?:y|ical)\b",
+        r"\bconfirm(?:ed|ation)?\b",
+        r"\bconfirmation\b",
+        r"\bstaging\b",
+        r"\bstage\b",
+        r"\bmetast(?:asis|atic)\b",
+        r"\bconsistent with\b",
+        r"\bsuggests?\b",
+        r"\bindicates?\b",
     ]
 
-    diagnostic_words = [
-        "diagnosis",
-        "diagnose",
-        "suspect",
-        "suspicion",
-        "consistent with",
-        "suggests",
-        "indicates",
-        "confirm",
-        "confirmation",
-        "biopsy",
-        "cancer"
+    # Recommendations:
+    # Terms indicating an action or recommendation.
+    recommendation_patterns = [
+        r"\bshould\b",
+        r"\brecommend(?:ed|ation)?\b",
+        r"\bmust\b",
+        r"\bconsider\b",
+        r"\bavoid\b",
+        r"\bdo not\b",
+        r"\bis indicated\b",
     ]
 
-    medical_fact_words = [
-        "is",
-        "are",
-        "has",
-        "have",
-        "causes",
-        "associated",
-        "specific",
-        "elevated",
-        "increased",
-        "decreased"
-    ]
-
-    if any(word in text for word in recommendation_words):
+    if any(
+        re.search(pattern, text)
+        for pattern in recommendation_patterns
+    ):
         return "Recommendation"
 
-    if any(word in text for word in diagnostic_words):
+    if any(
+        re.search(pattern, text)
+        for pattern in diagnostic_patterns
+    ):
         return "Diagnostic claim"
 
-    if any(word in text for word in medical_fact_words):
+    # Statements describing medical facts,
+    # characteristics, associations or measurements.
+    medical_fact_patterns = [
+        r"\bis\b",
+        r"\bare\b",
+        r"\bhas\b",
+        r"\bhave\b",
+        r"\bcauses?\b",
+        r"\bassociated with\b",
+        r"\bspecific\b",
+        r"\belevated\b",
+        r"\bincreased\b",
+        r"\bdecreased\b",
+        r"\bpresents?\b",
+        r"\bcontains?\b",
+        r"\bmeasured\b",
+    ]
+
+    if any(
+        re.search(pattern, text)
+        for pattern in medical_fact_patterns
+    ):
         return "Medical fact"
 
     return "Clinical statement"
@@ -308,23 +329,19 @@ if st.button("Generate evidence record"):
         )
 
         if status == "Supported":
-
             st.success("🟢 Supported")
 
         elif status == "Partially supported":
-
             st.warning(
                 "🟠 Partially supported"
             )
 
         elif status == "Not supported":
-
             st.error(
                 "🔴 Not supported"
             )
 
         else:
-
             st.info(
                 "⚪ Source not verified"
             )
@@ -334,11 +351,8 @@ if st.button("Generate evidence record"):
         )
 
         if assessment:
-
             st.write(assessment)
-
         else:
-
             st.warning(
                 "No assessment provided."
             )
@@ -348,11 +362,8 @@ if st.button("Generate evidence record"):
         )
 
         if final_wording:
-
             st.info(final_wording)
-
         else:
-
             st.warning(
                 "No final wording provided."
             )
