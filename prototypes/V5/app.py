@@ -747,6 +747,99 @@ else:
         "Enter both a clinical claim and an evidence passage "
         "to compare them."
     )
+    # --------------------------------------------------
+# 5E. CONCEPTUAL ANALYSIS
+# --------------------------------------------------
+
+def analyze_concepts(claim, evidence):
+
+    claim_lower = claim.lower()
+    evidence_lower = evidence.lower()
+
+    concept_pairs = [
+        (
+            ["prostate-specific", "specific to the prostate"],
+            ["organ-specific", "organ specific"],
+            "specificité de l'organe"
+        ),
+        (
+            ["cancer-specific", "specific to cancer"],
+            ["cancer-specific", "cancer specific"],
+            "spécificité cancéreuse"
+        ),
+        (
+            ["confirms", "confirm"],
+            ["histopathology", "histopathological examination"],
+            "confirmation diagnostique"
+        )
+    ]
+
+    detected = []
+
+    for claim_terms, evidence_terms, concept in concept_pairs:
+
+        claim_match = any(
+            term in claim_lower
+            for term in claim_terms
+        )
+
+        evidence_match = any(
+            term in evidence_lower
+            for term in evidence_terms
+        )
+
+        if claim_match and evidence_match:
+
+            detected.append(concept)
+
+    return detected
+
+
+st.header("5E. Conceptual analysis")
+
+if claim.strip() and evidence.strip():
+
+    concepts = analyze_concepts(
+        claim,
+        evidence
+    )
+
+    if concepts:
+
+        st.success(
+            "🟡 Concepts potentiellement correspondants détectés."
+        )
+
+        st.write(
+            "**Concepts détectés :**"
+        )
+
+        for concept in concepts:
+
+            st.write(
+                f"• {concept}"
+            )
+
+        st.warning(
+            "Cette analyse identifie des correspondances "
+            "conceptuelles prédéfinies. Elle ne constitue "
+            "pas une preuve de validité clinique et ne "
+            "remplace pas la vérification humaine."
+        )
+
+    else:
+
+        st.info(
+            "Aucune correspondance conceptuelle prédéfinie "
+            "n'a été détectée."
+        )
+
+else:
+
+    st.info(
+        "Entrez un claim et un passage de preuve pour "
+        "effectuer l'analyse conceptuelle."
+    )z
 # --------------------------------------------------
 # 6. EVIDENCE ASSESSMENT
 # --------------------------------------------------
