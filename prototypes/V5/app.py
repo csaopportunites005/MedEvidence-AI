@@ -600,7 +600,153 @@ else:
         "Enter a valid URL to retrieve source content."
     )
 
+# --------------------------------------------------
+# 5D. CLAIM ↔ EVIDENCE COMPARISON
+# --------------------------------------------------
 
+def normalize_text(text):
+    text = text.lower()
+
+    text = re.sub(
+        r"[^a-zàâçéèêëîïôûùüÿñæœ0-9\s-]",
+        " ",
+        text
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
+
+    return text.strip()
+
+
+def tokenize(text):
+    stopwords = {
+        "the", "a", "an", "and", "or", "of", "to",
+        "is", "are", "was", "were", "in", "on", "for",
+        "with", "that", "this", "but", "not",
+        "le", "la", "les", "un", "une", "des", "et",
+        "ou", "de", "du", "dans", "sur", "pour",
+        "avec", "est", "sont", "mais", "ne", "pas"
+    }
+
+    words = normalize_text(text).split()
+
+    return {
+        word
+        for word in words
+        if len(word) > 2 and word not in stopwords
+    }
+
+
+def compare_claim_evidence(claim, evidence):
+
+    claim_tokens = tokenize(claim)
+    evidence_tokens = tokenize(evidence)
+
+    if not claim_tokens:
+        return {
+            "score": 0,
+            "level": "Insufficient",
+            "overlap": set(),
+            "missing": set()
+        }
+
+    overlap = claim_tokens.intersection(
+        evidence_tokens
+    )
+
+    missing = claim_tokens.difference(
+        evidence_tokens
+    )
+
+    score = len(overlap) / len(claim_tokens)
+
+    if score >= 0.70:
+
+        level = "Strong textual correspondence"
+
+    elif score >= 0.40:
+
+        level = "Moderate textual correspondence"
+
+    elif score > 0:
+
+        level = "Weak textual correspondence"
+
+    else:
+
+        level = "No meaningful textual correspondence"
+
+    return {
+        "score": score,
+        "level": level,
+        "overlap": overlap,
+        "missing": missing
+    }
+
+
+st.header("5D. Claim ↔ Evidence comparison")
+
+if claim.strip() and evidence.strip():
+
+    comparison = compare_claim_evidence(
+        claim,
+        evidence
+    )
+
+    percentage = round(
+        comparison["score"] * 100
+    )
+
+    st.metric(
+        "Textual correspondence",
+        f"{percentage}%"
+    )
+
+    st.write(
+        f"**Assessment:** {comparison['level']}"
+    )
+
+    if comparison["overlap"]:
+
+        st.write(
+            "**Terms found in both claim and evidence:**"
+        )
+
+        st.code(
+            ", ".join(
+                sorted(comparison["overlap"])
+            )
+        )
+
+    if comparison["missing"]:
+
+        st.write(
+            "**Claim terms not found in the evidence passage:**"
+        )
+
+        st.code(
+            ", ".join(
+                sorted(comparison["missing"])
+            )
+        )
+
+    st.warning(
+        "⚠️ This comparison measures textual correspondence "
+        "only. It does not establish that the evidence is "
+        "scientifically sufficient or that the claim is true. "
+        "Human verification remains necessary."
+    )
+
+else:
+
+    st.info(
+        "Enter both a clinical claim and an evidence passage "
+        "to compare them."
+    )
 # --------------------------------------------------
 # 6. EVIDENCE ASSESSMENT
 # --------------------------------------------------
