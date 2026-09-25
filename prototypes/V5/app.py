@@ -839,7 +839,7 @@ else:
     st.info(
         "Entrez un claim et un passage de preuve pour "
         "effectuer l'analyse conceptuelle."
-    )z
+    )
 # --------------------------------------------------
 # 6. EVIDENCE ASSESSMENT
 # --------------------------------------------------
