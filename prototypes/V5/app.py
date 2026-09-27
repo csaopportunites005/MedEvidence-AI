@@ -947,6 +947,162 @@ else:
         "Enter both a clinical claim and an evidence "
         "passage to calculate semantic similarity."
     )
+    # --------------------------------------------------
+# 5G. EVIDENCE RELATIONSHIP
+# --------------------------------------------------
+
+def assess_evidence_relationship(claim, evidence):
+
+    claim_lower = claim.lower().strip()
+    evidence_lower = evidence.lower().strip()
+
+    # Explicit contradiction patterns
+    contradiction_pairs = [
+        ("is prostate-specific", "is not prostate-specific"),
+        ("is not prostate-specific", "is prostate-specific"),
+        ("not cancer-specific", "cancer-specific"),
+        ("cancer-specific", "not cancer-specific"),
+    ]
+
+    for claim_phrase, evidence_phrase in contradiction_pairs:
+
+        if (
+            claim_phrase in claim_lower
+            and evidence_phrase in evidence_lower
+        ):
+            return (
+                "Contradicts",
+                "The evidence contains a statement "
+                "that is incompatible with the claim."
+            )
+
+    # Direct support patterns
+    direct_support_patterns = [
+        (
+            "prostate-specific",
+            "prostate-specific"
+        ),
+        (
+            "not cancer-specific",
+            "not cancer-specific"
+        ),
+        (
+            "histopathological examination",
+            "histopathological examination"
+        )
+    ]
+
+    support_matches = 0
+
+    for claim_phrase, evidence_phrase in direct_support_patterns:
+
+        if (
+            claim_phrase in claim_lower
+            and evidence_phrase in evidence_lower
+        ):
+            support_matches += 1
+
+    if support_matches >= 2:
+
+        return (
+            "Supports",
+            "The evidence contains multiple statements "
+            "that directly correspond to the central elements "
+            "of the claim."
+        )
+
+    elif support_matches == 1:
+
+        return (
+            "Partially supports",
+            "The evidence directly corresponds to part "
+            "of the claim, but does not establish all "
+            "elements of the claim."
+        )
+
+    # Topic-related evidence without direct support
+    semantic_keywords = [
+        "psa",
+        "prostate",
+        "cancer",
+        "diagnosis",
+        "biopsy"
+    ]
+
+    related_terms = sum(
+        1
+        for keyword in semantic_keywords
+        if keyword in evidence_lower
+    )
+
+    if related_terms >= 1:
+
+        return (
+            "Insufficient evidence",
+            "The evidence is related to the clinical topic "
+            "but does not directly establish the claim."
+        )
+
+    return (
+        "Insufficient evidence",
+        "The evidence does not provide sufficient information "
+        "to establish the claim."
+    )
+
+
+st.header("5G. Evidence relationship")
+
+if claim.strip() and evidence.strip():
+
+    relationship, explanation = assess_evidence_relationship(
+        claim,
+        evidence
+    )
+
+    if relationship == "Supports":
+
+        st.success(
+            f"🟢 **{relationship}**"
+        )
+
+    elif relationship == "Partially supports":
+
+        st.warning(
+            f"🟠 **{relationship}**"
+        )
+
+    elif relationship == "Contradicts":
+
+        st.error(
+            f"🔴 **{relationship}**"
+        )
+
+    else:
+
+        st.info(
+            f"⚪ **{relationship}**"
+        )
+
+    st.write(
+        "**Reason:**"
+    )
+
+    st.write(
+        explanation
+    )
+
+    st.caption(
+        "Automated evidence-relationship assessment. "
+        "This result does not constitute clinical validation "
+        "and requires human verification."
+    )
+
+else:
+
+    st.info(
+        "Enter both a clinical claim and an evidence passage "
+        "to assess their relationship."
+    )
 # --------------------------------------------------
 # 6. EVIDENCE ASSESSMENT
 # --------------------------------------------------
