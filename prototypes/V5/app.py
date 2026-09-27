@@ -840,6 +840,113 @@ else:
         "Entrez un claim et un passage de preuve pour "
         "effectuer l'analyse conceptuelle."
     )
+     # --------------------------------------------------
+# 5F. SEMANTIC SIMILARITY
+# --------------------------------------------------
+
+from sentence_transformers import SentenceTransformer
+import numpy as np
+
+
+@st.cache_resource
+def load_semantic_model():
+    return SentenceTransformer(
+        "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
+
+
+def calculate_semantic_similarity(claim, evidence):
+
+    model = load_semantic_model()
+
+    embeddings = model.encode(
+        [claim, evidence],
+        normalize_embeddings=True
+    )
+
+    similarity = float(
+        np.dot(
+            embeddings[0],
+            embeddings[1]
+        )
+    )
+
+    return similarity
+
+
+st.header("5F. Semantic similarity")
+
+if claim.strip() and evidence.strip():
+
+    try:
+
+        similarity = calculate_semantic_similarity(
+            claim,
+            evidence
+        )
+
+        percentage = round(
+            max(0, min(1, similarity)) * 100
+        )
+
+        st.metric(
+            "Semantic similarity",
+            f"{percentage}%"
+        )
+
+        if similarity >= 0.80:
+
+            interpretation = (
+                "High semantic similarity"
+            )
+
+        elif similarity >= 0.60:
+
+            interpretation = (
+                "Moderate semantic similarity"
+            )
+
+        elif similarity >= 0.40:
+
+            interpretation = (
+                "Low semantic similarity"
+            )
+
+        else:
+
+            interpretation = (
+                "Very low semantic similarity"
+            )
+
+        st.write(
+            f"**Interpretation:** {interpretation}"
+        )
+
+        st.warning(
+            "⚠️ Semantic similarity measures proximity "
+            "between the meanings represented by the two "
+            "texts. It does not establish that the evidence "
+            "supports the clinical claim, does not verify "
+            "the source, and does not constitute clinical "
+            "validation."
+        )
+
+    except Exception as error:
+
+        st.error(
+            "Semantic similarity could not be calculated."
+        )
+
+        st.caption(
+            f"Technical detail: {error}"
+        )
+
+else:
+
+    st.info(
+        "Enter both a clinical claim and an evidence "
+        "passage to calculate semantic similarity."
+    )
 # --------------------------------------------------
 # 6. EVIDENCE ASSESSMENT
 # --------------------------------------------------
